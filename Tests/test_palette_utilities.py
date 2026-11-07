@@ -28,6 +28,9 @@ from utilities.palette_utilities import (
     cleanup_previews,
     get_color_icon,
     get_or_create_default_palette,
+    import_gpl_palette,
+    parse_gpl,
+    serialize_gpl,
 )
 
 
@@ -113,6 +116,67 @@ class TestGetColorIcon(unittest.TestCase):
         # Should not crash with out-of-range linear values
         icon_id = get_color_icon(2.0, -0.5, 0.5)
         self.assertIsInstance(icon_id, int)
+
+
+class TestGpl(unittest.TestCase):
+    SAMPLE = (
+        "GIMP Palette\n"
+        "Name: Test Pal\n"
+        "Columns: 4\n"
+        "# comment\n"
+        "255   0   0\tRed\n"
+        "128 128 128 Gray\n"
+        "bad line\n"
+        "300 0 0\n"
+        "\n"
+        "  0   0 255\n"
+    )
+
+    def test_parse_name_colors_and_skipped(self):
+        name, colors, skipped = parse_gpl(self.SAMPLE)
+        self.assertEqual(name, "Test Pal")
+        self.assertEqual(len(colors), 3)
+        self.assertEqual(skipped, 2)
+
+    def test_parse_converts_srgb_to_linear(self):
+        _, colors, _ = parse_gpl(self.SAMPLE)
+        self.assertAlmostEqual(colors[0][0], 1.0)
+        self.assertAlmostEqual(colors[1][0], 0.2158, places=3)
+
+    def test_parse_rejects_non_gpl(self):
+        with self.assertRaises(ValueError):
+            parse_gpl("not a palette\n1 2 3\n")
+
+    def test_parse_without_name(self):
+        name, colors, _ = parse_gpl("GIMP Palette\n1 2 3\n")
+        self.assertIsNone(name)
+        self.assertEqual(len(colors), 1)
+
+    def test_round_trip(self):
+        _, colors, _ = parse_gpl(self.SAMPLE)
+        text = serialize_gpl("Test Pal", colors)
+        name, colors2, skipped = parse_gpl(text)
+        self.assertEqual(name, "Test Pal")
+        self.assertEqual(skipped, 0)
+        for a, b in zip(colors, colors2):
+            for ch in range(3):
+                self.assertAlmostEqual(a[ch], b[ch], places=3)
+
+    def test_serialize_clamps_and_names_untitled(self):
+        text = serialize_gpl("X", [(2.0, -1.0, 0.0)])
+        self.assertIn("255   0   0\tUntitled", text)
+
+    def test_import_creates_palette(self):
+        import tempfile
+        with tempfile.TemporaryDirectory() as d:
+            path = Path(d) / "p.gpl"
+            path.write_text(self.SAMPLE, encoding="utf-8")
+            palette, skipped = import_gpl_palette(str(path))
+        try:
+            self.assertEqual(len(palette.colors), 3)
+            self.assertEqual(skipped, 2)
+        finally:
+            bpy.data.palettes.remove(palette)
 
 
 if __name__ == "__main__":

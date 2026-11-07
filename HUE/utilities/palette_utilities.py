@@ -2,6 +2,8 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+from pathlib import Path
+
 import bpy
 import bpy.utils.previews
 
@@ -32,6 +34,85 @@ def _linear_to_srgb(c):
     if c <= 0.0031308:
         return c * 12.92
     return 1.055 * (c ** (1.0 / 2.4)) - 0.055
+
+
+def _srgb_to_linear(c):
+    """Convert a single sRGB float to linear-space."""
+    if c <= 0.04045:
+        return c / 12.92
+    return ((c + 0.055) / 1.055) ** 2.4
+
+
+# MARK: — GIMP palette (.gpl) I/O —————————————————————————————————————
+
+GPL_HEADER = "GIMP Palette"
+
+
+def parse_gpl(text):
+    """Parse GIMP palette text.
+
+    Returns ``(name, colors, skipped)`` where *colors* is a list of linear
+    ``(r, g, b)`` float tuples, *name* is the header ``Name:`` (or ``None``)
+    and *skipped* counts malformed color lines. Raises ``ValueError`` when
+    the text is not a GIMP palette.
+    """
+    lines = text.lstrip("﻿").splitlines()
+    if not lines or lines[0].strip() != GPL_HEADER:
+        raise ValueError("Not a GIMP palette file")
+
+    name = None
+    colors = []
+    skipped = 0
+    for line in lines[1:]:
+        line = line.strip()
+        if not line or line.startswith("#"):
+            continue
+        lower = line.lower()
+        if lower.startswith("name:"):
+            name = line[5:].strip() or None
+            continue
+        if lower.startswith("columns:"):
+            continue
+        parts = line.split()
+        try:
+            rgb = [int(parts[i]) for i in range(3)]
+        except (ValueError, IndexError):
+            skipped += 1
+            continue
+        if any(v < 0 or v > 255 for v in rgb):
+            skipped += 1
+            continue
+        colors.append(tuple(_srgb_to_linear(v / 255.0) for v in rgb))
+    return name, colors, skipped
+
+
+def serialize_gpl(name, colors):
+    """Serialize linear ``(r, g, b)`` colors to GIMP palette text."""
+    out = [GPL_HEADER, f"Name: {name}", "Columns: 8", "#"]
+    for color in colors:
+        r, g, b = (
+            max(0, min(255, round(_linear_to_srgb(max(0.0, min(1.0, c))) * 255)))
+            for c in color[:3]
+        )
+        out.append(f"{r:3d} {g:3d} {b:3d}\tUntitled")
+    return "\n".join(out) + "\n"
+
+
+def import_gpl_palette(filepath):
+    """Create a new palette datablock from a .gpl file.
+
+    Returns ``(palette, skipped)``. Raises ``ValueError`` for invalid files
+    and ``OSError`` if the file cannot be read.
+    """
+    with open(filepath, "r", encoding="utf-8", errors="replace") as f:
+        text = f.read()
+    name, colors, skipped = parse_gpl(text)
+    if not colors:
+        raise ValueError("Palette file contains no valid colors")
+    palette = bpy.data.palettes.new(name or Path(filepath).stem)
+    for color in colors:
+        palette.colors.new().color = color
+    return palette, skipped
 
 
 def get_color_icon(r, g, b):

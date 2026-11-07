@@ -55,6 +55,10 @@ class HUE_PT_random_color_tool_panel(BasePanelInfo, Panel):
             box.label(text="Palette", icon="COLOR")
             row = box.row(align=True)
             row.prop(random_color_tool, "random_palette", text="")
+            row = box.row(align=True)
+            row.operator("hue.import_palette", icon="IMPORT", text="Import").target = "RANDOM"
+            if random_color_tool.random_palette:
+                row.operator("hue.export_palette", icon="EXPORT", text="Export").target = "RANDOM"
 
             palette = random_color_tool.random_palette
             if palette and len(palette.colors) > 0:

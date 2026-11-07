@@ -42,6 +42,10 @@ class HUE_PT_simple_fill_tool_panel(BasePanelInfo, Panel):
         if tool.preset_palette:
             row.operator("hue.rename_palette", icon="GREASEPENCIL", text="")
             row.operator("hue.delete_palette", icon="TRASH", text="")
+        row = box.row(align=True)
+        row.operator("hue.import_palette", icon="IMPORT", text="Import").target = "FILL"
+        if tool.preset_palette:
+            row.operator("hue.export_palette", icon="EXPORT", text="Export").target = "FILL"
 
         # --- Swatch grid ---
         palette = tool.preset_palette

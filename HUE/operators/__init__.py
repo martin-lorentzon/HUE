@@ -13,6 +13,7 @@ from . import (
     color_by_selection,
     display_vertex_colors,
     open_documentation,
+    palette_io,
     reset_vertex_colors,
     simple_fill,
     smooth_vertex_colors,
@@ -40,6 +41,9 @@ classes = [
     simple_fill.HUE_OT_rename_palette,
     simple_fill.HUE_OT_delete_palette,
     simple_fill.HUE_OT_use_preset_color,
+
+    palette_io.HUE_OT_import_palette,
+    palette_io.HUE_OT_export_palette,
 
     smooth_vertex_colors.HUE_OT_smooth_vertex_colors,
 

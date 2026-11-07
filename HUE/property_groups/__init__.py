@@ -57,8 +57,16 @@ def register():
     bpy.types.Scene.hue_symmetrize_tool = bpy.props.PointerProperty(
         type=symmetrize_tool_properties.SymmetrizeToolProperties)
 
+    # Same key the .gpl importer writes, so imported layouts show up here.
+    bpy.types.Palette.hue_columns = bpy.props.IntProperty(
+        name="Columns",
+        description="Swatches per row when drawing this palette (default is 8)",
+        default=8, min=1, max=64)
+
 
 def unregister():
+    del bpy.types.Palette.hue_columns
+
     for cls in classes:
         bpy.utils.unregister_class(cls)
 

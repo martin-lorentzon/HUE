@@ -8,7 +8,7 @@ from bpy.types import Panel
 from ..base_panel_info import BasePanelInfo
 from ...utilities.color_utilities import get_target_objects
 from ...utilities.palette_utilities import (
-    SWATCH_COLS, ensure_palette_assigned, get_color_icon,
+    ensure_palette_assigned, has_merge_snapshot, palette_columns, get_color_icon,
 )
 
 
@@ -60,11 +60,16 @@ class HUE_PT_random_color_tool_panel(BasePanelInfo, Panel):
             row.operator("hue.import_palette", icon="IMPORT", text="Import").target = "RANDOM"
             if random_color_tool.random_palette:
                 row.operator("hue.export_palette", icon="EXPORT", text="Export").target = "RANDOM"
+                row.menu("HUE_MT_sort_palette_random", icon="SORTSIZE", text="")
+                row.operator("hue.merge_close_colors", icon="AUTOMERGE_ON", text="").target = "RANDOM"
+                if has_merge_snapshot(random_color_tool.random_palette):
+                    row.operator("hue.restore_merged_colors", icon="LOOP_BACK", text="").target = "RANDOM"
 
             palette = random_color_tool.random_palette
             if palette and len(palette.colors) > 0:
+                cols = palette_columns(palette)
                 for i, pc in enumerate(palette.colors):
-                    if i % SWATCH_COLS == 0:
+                    if i % cols == 0:
                         row = box.row(align=True)
                         row.alignment = 'LEFT'
                     icon_id = get_color_icon(*pc.color)

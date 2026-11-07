@@ -26,11 +26,24 @@ from utilities.palette_utilities import (
     DEFAULT_PALETTE_NAME,
     _linear_to_srgb,
     cleanup_previews,
+    clear_merge_snapshots,
+    color_distance,
+    discard_merge_snapshot,
     get_color_icon,
     get_or_create_default_palette,
+    has_merge_snapshot,
     import_gpl_palette,
+    merge_close_colors,
+    merge_close_order,
     parse_gpl,
+    restore_merged_colors,
     serialize_gpl,
+    sort_order_hue,
+    sort_order_hue_ramps,
+    sort_order_lightness,
+    sort_order_reverse,
+    sort_order_saturation,
+    _srgb_to_linear,
 )
 
 
@@ -177,6 +190,183 @@ class TestGpl(unittest.TestCase):
             self.assertEqual(skipped, 2)
         finally:
             bpy.data.palettes.remove(palette)
+
+
+class TestSortHueRamps(unittest.TestCase):
+    @staticmethod
+    def _lin(hex_str):
+        return tuple(_srgb_to_linear(int(hex_str[i:i + 2], 16) / 255.0) for i in (0, 2, 4))
+
+    def test_permutation_and_deterministic(self):
+        colors = [self._lin(h) for h in ("ff0000", "808080", "0000ff", "00ff00", "400000", "ffffff")]
+        order = sort_order_hue_ramps(colors)
+        self.assertEqual(sorted(order), list(range(len(colors))))
+        self.assertEqual(order, sort_order_hue_ramps(colors))
+
+    def test_ramp_dark_to_light_and_neutrals_last(self):
+        hexes = ["ff8080", "400000", "ff0000", "ffffff", "000000", "808080", "0000ff"]
+        colors = [self._lin(h) for h in hexes]
+        sorted_hex = [hexes[i] for i in sort_order_hue_ramps(colors)]
+        self.assertEqual(sorted_hex[:3], ["400000", "ff0000", "ff8080"])
+        self.assertEqual(sorted_hex[3], "0000ff")
+        self.assertEqual(sorted_hex[4:], ["000000", "808080", "ffffff"])
+
+    def test_dark_tinted_color_keeps_hue_group(self):
+        hexes = ["ff0000", "200010", "808080"]
+        sorted_hex = [hexes[i] for i in sort_order_hue_ramps([self._lin(h) for h in hexes])]
+        self.assertEqual(sorted_hex[-1], "808080")
+
+    def test_other_methods(self):
+        hexes = ["0000ff", "ff0000", "ffffff", "202020", "ff8080"]
+        colors = [self._lin(h) for h in hexes]
+        for fn in (sort_order_hue, sort_order_lightness, sort_order_saturation, sort_order_reverse):
+            self.assertEqual(sorted(fn(colors)), list(range(len(colors))))
+        by_light = [hexes[i] for i in sort_order_lightness(colors)]
+        self.assertEqual((by_light[0], by_light[-1]), ("202020", "ffffff"))
+        self.assertEqual([hexes[i] for i in sort_order_hue(colors)][:2], ["ff0000", "ff8080"])
+        self.assertEqual([hexes[i] for i in sort_order_saturation(colors)][-2:], ["0000ff", "ff0000"])
+        self.assertEqual(sort_order_reverse(colors), [4, 3, 2, 1, 0])
+
+
+class TestMergeCloseColors(unittest.TestCase):
+    @staticmethod
+    def _lin(hex_str):
+        return tuple(_srgb_to_linear(int(hex_str[i:i + 2], 16) / 255.0) for i in (0, 2, 4))
+
+    def test_distance(self):
+        red, near, blue = self._lin("ff0000"), self._lin("fe0000"), self._lin("0000ff")
+        self.assertAlmostEqual(color_distance(red, red), 0.0)
+        self.assertLess(color_distance(red, near), 2.0)
+        self.assertGreater(color_distance(red, blue), 50.0)
+
+    def test_merges_near_duplicates_anchored_on_first(self):
+        hexes = ["ff0000", "00ff00", "fe0101", "0000ff", "00fe00"]
+        keep, mapping = merge_close_order([self._lin(h) for h in hexes], 5.0)
+        self.assertEqual(keep, [0, 1, 3])
+        self.assertEqual(mapping, [0, 1, 0, 2, 1])
+
+    def test_distinct_and_zero_threshold_keep_all(self):
+        hexes = ["ff0000", "00ff00", "0000ff"]
+        colors = [self._lin(h) for h in hexes]
+        self.assertEqual(merge_close_order(colors, 5.0)[0], [0, 1, 2])
+        dup = colors + [colors[0]]
+        self.assertEqual(merge_close_order(dup, 0.0)[0], [0, 1, 2])  # exact duplicate still merges
+        near = colors + [self._lin("fe0000")]
+        self.assertEqual(merge_close_order(near, 0.0)[0], [0, 1, 2, 3])
+
+    def test_palette_wrapper(self):
+        palette = bpy.data.palettes.new("merge_test")
+        try:
+            for h in ("ff0000", "fe0101", "00ff00", "ff0101"):
+                palette.colors.new().color = self._lin(h)
+            removed, new_active = merge_close_colors(palette, 5.0, active_index=3)
+            self.assertEqual(removed, 2)
+            self.assertEqual(new_active, 0)
+            self.assertEqual(len(palette.colors), 2)
+            reds = [self._lin(h) for h in ("ff0000", "fe0101", "ff0101")]
+            for i in range(3):
+                self.assertAlmostEqual(palette.colors[0].color[i], sum(c[i] for c in reds) / 3, places=5)
+            self.assertAlmostEqual(palette.colors[1].color[1], 1.0, places=5)
+        finally:
+            bpy.data.palettes.remove(palette)
+
+    def test_restore_and_remerge_from_original(self):
+        palette = bpy.data.palettes.new("merge_restore_test")
+        try:
+            hexes = ("ff0000", "fe0101", "00ff00", "ff0101", "0000ff")
+            originals = [self._lin(h) for h in hexes]
+            for c in originals:
+                palette.colors.new().color = c
+            self.assertFalse(has_merge_snapshot(palette))
+            removed, _ = merge_close_colors(palette, 5.0, active_index=4)
+            self.assertEqual((removed, len(palette.colors)), (2, 3))
+            self.assertTrue(has_merge_snapshot(palette))
+            # Re-merging (F9 redo) starts from the original colors, even without undo.
+            removed, new_active = merge_close_colors(palette, 0.5, active_index=0)
+            self.assertEqual(len(palette.colors), 4)
+            self.assertEqual(new_active, 3)  # active index remembered from the first merge
+            self.assertEqual(restore_merged_colors(palette), 4)
+            self.assertEqual(len(palette.colors), 5)
+            for pc, c in zip(palette.colors, originals):
+                for i in range(3):
+                    self.assertAlmostEqual(pc.color[i], c[i], places=5)
+            self.assertFalse(has_merge_snapshot(palette))
+            self.assertIsNone(restore_merged_colors(palette))
+        finally:
+            bpy.data.palettes.remove(palette)
+
+    def test_snapshot_dropped_after_manual_edit(self):
+        palette = bpy.data.palettes.new("merge_stale_test")
+        try:
+            for h in ("ff0000", "fe0101", "00ff00"):
+                palette.colors.new().color = self._lin(h)
+            merge_close_colors(palette, 5.0)
+            palette.colors.new().color = (0.3, 0.3, 0.3)
+            self.assertFalse(has_merge_snapshot(palette))
+            self.assertIsNone(restore_merged_colors(palette))
+        finally:
+            bpy.data.palettes.remove(palette)
+
+    def test_no_op_merge_leaves_no_snapshot(self):
+        palette = bpy.data.palettes.new("merge_noop_test")
+        try:
+            for h in ("ff0000", "fe0101", "00ff00"):
+                palette.colors.new().color = self._lin(h)
+            merge_close_colors(palette, 5.0)
+            self.assertTrue(has_merge_snapshot(palette))
+            self.assertEqual(merge_close_colors(palette, 0.0)[0], 0)  # redo finds nothing: back to original
+            self.assertEqual(len(palette.colors), 3)
+            self.assertFalse(has_merge_snapshot(palette))
+        finally:
+            bpy.data.palettes.remove(palette)
+
+    def test_discard_makes_current_colors_the_baseline(self):
+        palette = bpy.data.palettes.new("merge_discard_test")
+        try:
+            for h in ("ff0000", "ff0101", "00ff00", "0000ff"):
+                palette.colors.new().color = self._lin(h)
+            merge_close_colors(palette, 5.0)
+            self.assertEqual(len(palette.colors), 3)
+            discard_merge_snapshot(palette)
+            merge_close_colors(palette, 0.0)  # fresh merge of what is shown: nothing changes
+            self.assertEqual(len(palette.colors), 3)
+        finally:
+            bpy.data.palettes.remove(palette)
+
+    def test_restore_maps_current_selection_and_snapshot_survives_revert(self):
+        palette = bpy.data.palettes.new("merge_active_test")
+        try:
+            for h in ("ff0000", "00ff00", "fe0101", "0000ff"):
+                palette.colors.new().color = self._lin(h)
+            merge_close_colors(palette, 5.0, active_index=0)
+            palette.colors.new().color = (0.3, 0.3, 0.3)
+            self.assertFalse(has_merge_snapshot(palette))
+            palette.colors.remove(palette.colors[3])  # edit reverted (e.g. redo): snapshot valid again
+            self.assertTrue(has_merge_snapshot(palette))
+            self.assertEqual(restore_merged_colors(palette, active_index=2), 3)  # blue was 4th originally
+            self.assertEqual(len(palette.colors), 4)
+        finally:
+            bpy.data.palettes.remove(palette)
+
+    def test_snapshots_pruned_and_cleared(self):
+        from utilities import palette_utilities as pu
+        palette = bpy.data.palettes.new("merge_prune_test")
+        other = bpy.data.palettes.new("merge_prune_other")
+        try:
+            for pal in (palette, other):
+                for h in ("ff0000", "fe0101"):
+                    pal.colors.new().color = self._lin(h)
+            merge_close_colors(palette, 5.0)
+            bpy.data.palettes.remove(palette)
+            palette = None
+            merge_close_colors(other, 5.0)  # prunes the deleted palette's entry
+            self.assertNotIn("merge_prune_test", pu._merge_snapshots)
+            clear_merge_snapshots()
+            self.assertFalse(has_merge_snapshot(other))
+        finally:
+            if palette:
+                bpy.data.palettes.remove(palette)
+            bpy.data.palettes.remove(other)
 
 
 if __name__ == "__main__":

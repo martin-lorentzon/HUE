@@ -44,6 +44,11 @@ classes = [
 
     palette_io.HUE_OT_import_palette,
     palette_io.HUE_OT_export_palette,
+    palette_io.HUE_OT_sort_palette,
+    palette_io.HUE_OT_merge_close_colors,
+    palette_io.HUE_OT_restore_merged_colors,
+    palette_io.HUE_MT_sort_palette_fill,
+    palette_io.HUE_MT_sort_palette_random,
 
     smooth_vertex_colors.HUE_OT_smooth_vertex_colors,
 

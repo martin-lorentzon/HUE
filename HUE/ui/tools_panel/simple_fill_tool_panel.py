@@ -7,7 +7,7 @@ from bpy.types import Panel
 
 from ..base_panel_info import BasePanelInfo
 from ...utilities.palette_utilities import (
-    SWATCH_COLS, ensure_palette_assigned, get_color_icon,
+    ensure_palette_assigned, has_merge_snapshot, palette_columns, get_color_icon,
 )
 
 
@@ -46,13 +46,18 @@ class HUE_PT_simple_fill_tool_panel(BasePanelInfo, Panel):
         row.operator("hue.import_palette", icon="IMPORT", text="Import").target = "FILL"
         if tool.preset_palette:
             row.operator("hue.export_palette", icon="EXPORT", text="Export").target = "FILL"
+            row.menu("HUE_MT_sort_palette_fill", icon="SORTSIZE", text="")
+            row.operator("hue.merge_close_colors", icon="AUTOMERGE_ON", text="").target = "FILL"
+            if has_merge_snapshot(tool.preset_palette):
+                row.operator("hue.restore_merged_colors", icon="LOOP_BACK", text="").target = "FILL"
 
         # --- Swatch grid ---
         palette = tool.preset_palette
         if palette and len(palette.colors) > 0:
             active_idx = tool.active_preset_index
+            cols = palette_columns(palette)
             for i, pc in enumerate(palette.colors):
-                if i % SWATCH_COLS == 0:
+                if i % cols == 0:
                     row = box.row(align=True)
                     row.alignment = 'LEFT'
                 icon_id = get_color_icon(*pc.color)

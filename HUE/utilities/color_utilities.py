@@ -147,6 +147,18 @@ def bulk_set_colors(color_attribute, colors):
     color_attribute.data.foreach_set("color_srgb", colors.ravel())
 
 
+def linear_to_srgb(colors):
+    """Convert scene-linear (N, 4) colors to sRGB; alpha is left unchanged."""
+    out = np.array(colors, dtype=np.float32, copy=True)
+    rgb = np.clip(out[..., :3], 0.0, None)
+    out[..., :3] = np.where(
+        rgb <= 0.0031308,
+        rgb * 12.92,
+        1.055 * np.power(rgb, 1.0 / 2.4) - 0.055,
+    )
+    return out
+
+
 # ---- Numpy mask helpers ----
 
 def apply_mask_constant(colors, color, mask, indices=None):

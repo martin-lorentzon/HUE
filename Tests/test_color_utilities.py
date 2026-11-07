@@ -40,7 +40,17 @@ from utilities.color_utilities import (
     get_random_color_by_hue,
     get_random_color_by_RGBA,
     get_selected_color_indices,
+    linear_to_srgb,
 )
+
+
+class TestLinearToSrgb(unittest.TestCase):
+    def test_endpoints_and_midpoint(self):
+        out = linear_to_srgb(np.array([[0, 0, 0, 0.5], [1, 1, 1, 1], [0.5, 0.5, 0.5, 1]], dtype=np.float32))
+        np.testing.assert_allclose(out[0], [0, 0, 0, 0.5], atol=1e-6)
+        np.testing.assert_allclose(out[1], [1, 1, 1, 1], atol=1e-5)
+        np.testing.assert_allclose(out[2, :3], 0.735357, atol=1e-4)
+        self.assertEqual(out[2, 3], 1.0)
 
 
 # ---- Helpers -----------------------------------------------------------------

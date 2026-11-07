@@ -21,6 +21,7 @@ from .base_operators import BaseColorOperator, BaseOperator
 from ..utilities.color_utilities import (
     apply_mask_array, bulk_get_colors, bulk_set_colors,
     ensure_object_mode, get_active_color_attribute, get_selected_color_indices,
+    linear_to_srgb,
 )
 
 
@@ -694,7 +695,8 @@ class HUE_OT_add_color_by_position(BaseColorOperator):
                 [color_ramp.evaluate(float(values[vi])) for vi in unique_verts],
                 dtype=np.float32,
             )
-            new_colors = ramp_colors[inverse]
+            # ColorRamp.evaluate() returns scene-linear; colors are stored as sRGB
+            new_colors = linear_to_srgb(ramp_colors)[inverse]
             apply_mask_array(colors, new_colors, mask, target_loops)
 
         elif color_attribute.domain == "POINT":
@@ -704,6 +706,7 @@ class HUE_OT_add_color_by_position(BaseColorOperator):
                 [color_ramp.evaluate(float(values[vi])) for vi in target_verts],
                 dtype=np.float32,
             )
+            new_colors = linear_to_srgb(new_colors)
             apply_mask_array(colors, new_colors, mask, target_verts)
 
         bulk_set_colors(color_attribute, colors)

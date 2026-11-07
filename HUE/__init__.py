@@ -3,10 +3,46 @@
 #
 # SPDX-License-Identifier: GPL-3.0-or-later
 
+# bl_info is only read when installed as a legacy add-on,
+# extensions use blender_manifest.toml instead (keep the two in sync)
+bl_info = {
+    "name": "HUE",
+    "description": "A set of tools to make vertex painting easier",
+    "author": "Fardreamer Labs, Martin Lorentzon",
+    "version": (1, 2, 2),
+    "blender": (4, 2, 0),
+    "location": "3D Viewport > Sidebar > HUE",
+    "doc_url": "https://github.com/Fardreamer-Labs/HUE",
+    "tracker_url": "https://github.com/Fardreamer-Labs/HUE/issues",
+    "support": "COMMUNITY",
+    "category": "Paint",
+}
+
+
+# ——————————————————————————————————————————————————————————————————————
+# MARK: IMPORTS
+# ——————————————————————————————————————————————————————————————————————
+
+
+# fmt: off
+import sys
+
+# Drop every cached submodule of this package and import again on reload
+if "bpy" in locals():
+    for _name in [n for n in sys.modules if n.startswith(__name__ + ".")]:
+        del sys.modules[_name]
+
 import bpy
 
 from . import operators, preferences, property_groups, ui
 from .utilities.palette_utilities import register_handlers, unregister_handlers
+# fmt: on
+
+
+# ——————————————————————————————————————————————————————————————————————
+# MARK: REGISTRATION
+# ——————————————————————————————————————————————————————————————————————
+
 
 packages = [property_groups, operators, ui]
 
@@ -32,5 +68,5 @@ def unregister():
 
     for package in reversed(packages):
         package.unregister()
-        
+
     preferences.unregister()

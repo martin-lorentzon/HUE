@@ -20,10 +20,13 @@ def _apply_fill(obj, color, mask, select_mode):
     """
     color_attribute = get_active_color_attribute(obj)
     indices = get_selected_color_indices(obj, select_mode, color_attribute.domain)
+    if indices is not None and len(indices) == 0:
+        return False  # Nothing selected
     colors = bulk_get_colors(color_attribute)
     apply_mask_constant(colors, color, mask, indices)
     bulk_set_colors(color_attribute, colors)
     obj.data.update()
+    return True
 
 
 def execute_simple_fill(context):
@@ -38,13 +41,17 @@ def execute_simple_fill(context):
     color = simple_fill_tool.selected_color
     select_mode = context.tool_settings.mesh_select_mode if context.mode == 'EDIT_MESH' else None
 
+    any_applied = False
     for obj in get_target_objects(context):
         if obj.type != "MESH":
             continue
 
         with ensure_object_mode(obj):
-            _apply_fill(obj, color, mask, select_mode)
+            if _apply_fill(obj, color, mask, select_mode):
+                any_applied = True
 
+    if not any_applied:
+        return False, "Nothing selected: select vertices, edges or faces to apply the color."
     return True, "Vertex colors assigned successfully!"
 
 
@@ -58,7 +65,7 @@ class HUE_OT_simple_fill(BaseColorOperator):
     def execute(self, context):
         success, msg = execute_simple_fill(context)
         if not success:
-            self.report({"ERROR"}, msg)
+            self.report({"WARNING"}, msg)
             return {"CANCELLED"}
         self.report({"INFO"}, msg)
         return {"FINISHED"}
@@ -220,8 +227,9 @@ class HUE_OT_use_preset_color(BaseOperator):
         if simple_fill_tool.quick_fill:
             success, msg = execute_simple_fill(context)
             if not success:
-                self.report({"ERROR"}, msg)
-                return {"CANCELLED"}
+                # The preset is still selected as the active color; only the fill was skipped
+                self.report({"WARNING"}, msg)
+                return {"FINISHED"}
             self.report({"INFO"}, msg)
 
         return {"FINISHED"}

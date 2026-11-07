@@ -39,6 +39,7 @@ class HUE_OT_add_color_by_position(BaseColorOperator):
         select_mode = context.tool_settings.mesh_select_mode if context.mode == 'EDIT_MESH' else None
 
         any_applied = False
+        any_empty_selection = False
         for obj in get_target_objects(context):
             if obj.type != "MESH":
                 continue
@@ -48,11 +49,16 @@ class HUE_OT_add_color_by_position(BaseColorOperator):
                     continue
                 if tool.normalize_per_island:
                     values = self._normalize_per_island(obj, values)
-                self._apply_gradient(obj, values, color_ramp, mask, select_mode)
-                any_applied = True
+                if self._apply_gradient(obj, values, color_ramp, mask, select_mode):
+                    any_applied = True
+                else:
+                    any_empty_selection = True
 
         if not any_applied:
-            self.report({"ERROR"}, "No active vertex group found on selected objects.")
+            if any_empty_selection:
+                self.report({"WARNING"}, "Nothing selected: select vertices, edges or faces to apply the gradient.")
+            else:
+                self.report({"ERROR"}, "No active vertex group found on selected objects.")
             return {"CANCELLED"}
         self.report({"INFO"}, "Gradient applied!")
         return {"FINISHED"}
@@ -688,6 +694,8 @@ class HUE_OT_add_color_by_position(BaseColorOperator):
             obj.data.loops.foreach_get("vertex_index", loop_verts)
 
             target_loops = np.arange(n_loops, dtype=np.intp) if indices is None else indices
+            if len(target_loops) == 0:
+                return False  # Nothing selected
 
             # Evaluate color ramp only for unique vertices used by target loops
             unique_verts, inverse = np.unique(loop_verts[target_loops], return_inverse=True)
@@ -702,6 +710,8 @@ class HUE_OT_add_color_by_position(BaseColorOperator):
         elif color_attribute.domain == "POINT":
             n_verts = len(obj.data.vertices)
             target_verts = np.arange(n_verts, dtype=np.intp) if indices is None else indices
+            if len(target_verts) == 0:
+                return False  # Nothing selected
             new_colors = np.array(
                 [color_ramp.evaluate(float(values[vi])) for vi in target_verts],
                 dtype=np.float32,
@@ -711,6 +721,7 @@ class HUE_OT_add_color_by_position(BaseColorOperator):
 
         bulk_set_colors(color_attribute, colors)
         obj.data.update()
+        return True
 
     def _get_color_ramp(self, context):
         tool = context.scene.hue_color_by_position_tool

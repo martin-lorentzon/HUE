@@ -290,6 +290,14 @@ class HUEPreferences(AddonPreferences):
         description="When enabled, clicking a palette swatch immediately fills the object with that color",
         default=False,
     )
+    pick_match_tolerance: FloatProperty(
+        name="Picker Match Tolerance",
+        description="How close a color picked from the mesh must be to a palette color to select it (perceptual difference)",
+        default=1.0,
+        min=0.0,
+        max=20.0,
+        precision=1,
+    )
     suppress_visibility_warning: BoolProperty(
         name="Don't warn when colors aren't visible",
         description=(
@@ -510,6 +518,7 @@ class HUEPreferences(AddonPreferences):
                 box = layout.box()
                 box.prop(self, "default_fill_color")
                 box.prop(self, "default_quick_fill")
+                box.prop(self, "pick_match_tolerance")
 
             self._draw_section_header(layout, "show_randomize", "SHADERFX", "Randomize Defaults")
             if self.show_randomize:

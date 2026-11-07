@@ -490,3 +490,20 @@ def unregister_handlers():
     clear_merge_snapshots()
     if _assign_default_palettes in bpy.app.handlers.load_post:
         bpy.app.handlers.load_post.remove(_assign_default_palettes)
+
+
+# MARK: — Find color ——————————————————————————————————————————————————
+
+def find_palette_match(palette_colors, color, tolerance):
+    """Index of the palette color closest to *color*, or ``None``.
+
+    Colors are ``(r, g, b)`` tuples; the match must be within *tolerance*
+    (delta E, see :func:`color_distance`).
+    """
+    best = None
+    best_distance = tolerance
+    for index, candidate in enumerate(palette_colors):
+        distance = color_distance(candidate, color)
+        if distance <= best_distance:
+            best, best_distance = index, distance
+    return best

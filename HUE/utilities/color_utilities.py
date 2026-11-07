@@ -248,3 +248,60 @@ def is_vertex_color_visible(context):
         return True  # Not in a 3D viewport — don't nag
     shading = space.shading
     return shading.type == 'SOLID' and shading.color_type in ('VERTEX', 'ATTRIBUTE')
+
+
+# ---- Color picking (pure helpers, no bpy) ----
+
+GRADIENT_EPSILON = 1.0 / 512.0
+
+
+def colors_equal(colors, eps=GRADIENT_EPSILON):
+    """True if every channel of *colors* varies by at most *eps*."""
+    for ch in range(len(colors[0])):
+        values = [c[ch] for c in colors]
+        if max(values) - min(values) > eps:
+            return False
+    return True
+
+
+def _sub(a, b):
+    return tuple(x - y for x, y in zip(a, b))
+
+
+def _dot(a, b):
+    return sum(x * y for x, y in zip(a, b))
+
+
+def distance_to_segment(point, a, b):
+    """Distance from *point* to the segment *a*-*b* (3D tuples)."""
+    ab = _sub(b, a)
+    ap = _sub(point, a)
+    length_sq = _dot(ab, ab)
+    t = 0.0 if length_sq == 0.0 else max(0.0, min(1.0, _dot(ap, ab) / length_sq))
+    closest = tuple(a[i] + ab[i] * t for i in range(3))
+    return _dot(_sub(point, closest), _sub(point, closest)) ** 0.5
+
+
+def pick_color_from_face(corner_colors, corner_coords, hit_point, eps=GRADIENT_EPSILON):
+    """Choose the color to pick from one face.
+
+    *corner_colors* and *corner_coords* are per-corner lists in face order and
+    *hit_point* is in the same space as the coordinates. Returns
+    ``(color, kind, index)``: a solid face gives ``"FACE"``; a gradient face
+    falls back to the nearest edge if that edge is solid (``"EDGE"``, *index*
+    is the corner the edge starts at); otherwise the nearest corner is used
+    (``"VERTEX"``, *index* is that corner).
+    """
+    if colors_equal(corner_colors, eps):
+        return tuple(corner_colors[0]), "FACE", None
+
+    count = len(corner_coords)
+    edge = min(range(count), key=lambda i: distance_to_segment(
+        hit_point, corner_coords[i], corner_coords[(i + 1) % count]))
+    c0, c1 = corner_colors[edge], corner_colors[(edge + 1) % count]
+    if colors_equal((c0, c1), eps):
+        return tuple(c0), "EDGE", edge
+
+    vertex = min(range(count), key=lambda i: _dot(_sub(hit_point, corner_coords[i]),
+                                                  _sub(hit_point, corner_coords[i])))
+    return tuple(corner_colors[vertex]), "VERTEX", vertex

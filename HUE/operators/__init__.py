@@ -14,6 +14,7 @@ from . import (
     display_vertex_colors,
     open_documentation,
     palette_io,
+    pick_color,
     reset_vertex_colors,
     simple_fill,
     smooth_vertex_colors,
@@ -42,6 +43,8 @@ classes = [
     simple_fill.HUE_OT_delete_palette,
     simple_fill.HUE_OT_use_preset_color,
 
+    pick_color.HUE_OT_pick_color,
+
     palette_io.HUE_OT_import_palette,
     palette_io.HUE_OT_export_palette,
     palette_io.HUE_OT_sort_palette,
@@ -68,5 +71,6 @@ def register():
 
 
 def unregister():
+    pick_color.cancel_running()
     for cls in classes:
         bpy.utils.unregister_class(cls)

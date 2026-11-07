@@ -135,6 +135,14 @@ Colors geometry based on the current edit-mode selection: **selected** elements 
 
 Useful for quickly creating selection masks or ID maps directly from your edit-mode selections.
 
+#### Color Picker
+
+The eyedropper next to the Fill tool's active color picks a color from your mesh. Hover over the mesh to preview it (the sampled face, edge or vertex is highlighted and a swatch follows the cursor), then click to pick. **Esc** or **right click** cancels.
+
+It picks the **face color**. If the face has a gradient, it uses the **nearest edge** when that edge is a solid color, otherwise the **nearest vertex** to the cursor.
+It samples what you see, so it works on meshes with modifiers (Mirror, Bevel, Subdivision and so on) as long as the modifiers keep the color attribute.
+If the picked color is in the current palette (within the **Picker Match Tolerance** in the add-on preferences), that swatch is selected; otherwise the color simply becomes the active color.
+
 #### Attribute Transfer Tool
 Allows you to transfer vertex colors from other objects. Colors can be sampled in three modes:
 - **Nearest Vertex**

@@ -27,6 +27,7 @@ class HUE_PT_simple_fill_tool_panel(BasePanelInfo, Panel):
         box.label(text="Active Color", icon="BRUSH_DATA")
         row = box.row(align=True)
         row.prop(tool, "selected_color", text="")
+        row.operator("hue.pick_color", icon="EYEDROPPER", text="")
         row.operator("hue.simple_fill", icon="CHECKMARK")
 
         layout.separator()

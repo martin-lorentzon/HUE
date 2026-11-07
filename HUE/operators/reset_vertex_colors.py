@@ -7,7 +7,7 @@ import numpy as np
 
 from ..utilities.color_utilities import (
     bulk_get_colors, bulk_set_colors, ensure_object_mode,
-    get_active_color_attribute, get_selected_color_indices,
+    get_active_color_attribute, get_selected_color_indices, get_target_objects,
 )
 from .base_operators import BaseColorOperator
 
@@ -24,7 +24,7 @@ class HUE_OT_reset_color(BaseColorOperator):
     def execute(self, context):
         select_mode = context.tool_settings.mesh_select_mode if context.mode == 'EDIT_MESH' else None
 
-        for obj in context.selected_objects:
+        for obj in get_target_objects(context):
             if obj.type != "MESH":
                 continue
 

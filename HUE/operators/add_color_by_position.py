@@ -20,7 +20,7 @@ from mathutils.noise import (
 from .base_operators import BaseColorOperator, BaseOperator
 from ..utilities.color_utilities import (
     apply_mask_array, bulk_get_colors, bulk_set_colors,
-    ensure_object_mode, get_active_color_attribute, get_selected_color_indices,
+    ensure_object_mode, get_active_color_attribute, get_selected_color_indices, get_target_objects,
     linear_to_srgb,
 )
 
@@ -39,7 +39,7 @@ class HUE_OT_add_color_by_position(BaseColorOperator):
         select_mode = context.tool_settings.mesh_select_mode if context.mode == 'EDIT_MESH' else None
 
         any_applied = False
-        for obj in context.selected_objects:
+        for obj in get_target_objects(context):
             if obj.type != "MESH":
                 continue
             with ensure_object_mode(obj):

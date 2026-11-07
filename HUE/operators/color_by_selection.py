@@ -6,7 +6,7 @@ import numpy as np
 
 from ..utilities.color_utilities import (
     apply_mask_constant, bulk_get_colors, bulk_set_colors,
-    ensure_object_mode, get_active_color_attribute, get_selected_color_indices,
+    ensure_object_mode, get_active_color_attribute, get_selected_color_indices, get_target_objects,
 )
 from .base_operators import BaseColorOperator
 
@@ -25,7 +25,7 @@ class HUE_OT_color_by_selection(BaseColorOperator):
         unsel_color = tool.unselected_color
         select_mode = context.tool_settings.mesh_select_mode
 
-        for obj in context.selected_objects:
+        for obj in get_target_objects(context):
             if obj.type != "MESH":
                 continue
             with ensure_object_mode(obj):

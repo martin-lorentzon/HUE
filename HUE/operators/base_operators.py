@@ -6,7 +6,7 @@
 import bpy
 from bpy.types import Operator
 
-from ..utilities.color_utilities import is_vertex_color_visible
+from ..utilities.color_utilities import get_target_objects, is_vertex_color_visible
 
 _ROOT_PKG = __package__.rsplit('.', 1)[0]
 
@@ -25,7 +25,7 @@ class BaseColorOperator(BaseOperator):
 
     @classmethod
     def poll(cls, context):
-        return any(obj.type == "MESH" for obj in context.selected_objects)
+        return any(obj.type == "MESH" for obj in get_target_objects(context))
 
     def invoke(self, context, event):
         result = self.execute(context)

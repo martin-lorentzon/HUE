@@ -30,6 +30,17 @@ def ensure_object_mode(obj):
             bpy.ops.object.mode_set(mode="EDIT")
 
 
+def get_target_objects(context):
+    """Return the objects tools should act on.
+
+    In Edit Mode this is every object being edited (even if it is not selected in
+    Object Mode); otherwise it is the selected objects.
+    """
+    if context.mode == "EDIT_MESH":
+        return list(context.objects_in_mode)
+    return list(context.selected_objects)
+
+
 def build_vertex_loop_map(obj):
     """Return a dict mapping vertex index to a list of loop indices in O(L)."""
     vert_to_loops = {}

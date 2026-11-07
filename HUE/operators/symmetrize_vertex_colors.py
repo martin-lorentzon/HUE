@@ -8,7 +8,7 @@ from mathutils.kdtree import KDTree
 from ..utilities.color_utilities import (
     apply_mask_array, bulk_get_colors, bulk_set_colors,
     ensure_object_mode, get_active_color_attribute,
-    get_selected_color_indices,
+    get_selected_color_indices, get_target_objects,
 )
 from .base_operators import BaseColorOperator
 
@@ -29,7 +29,7 @@ class HUE_OT_symmetrize_vertex_colors(BaseColorOperator):
 
         axis_index = {"X": 0, "Y": 1, "Z": 2}[tool.axis]
 
-        for obj in context.selected_objects:
+        for obj in get_target_objects(context):
             if obj.type != "MESH":
                 continue
             with ensure_object_mode(obj):

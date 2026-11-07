@@ -6,7 +6,7 @@ import numpy as np
 
 from ..utilities.color_utilities import (
     apply_mask_array, bulk_get_colors, bulk_set_colors,
-    ensure_object_mode, get_active_color_attribute,
+    ensure_object_mode, get_active_color_attribute, get_target_objects,
 )
 from .base_operators import BaseColorOperator
 
@@ -22,7 +22,7 @@ class HUE_OT_smooth_vertex_colors(BaseColorOperator):
         tool = context.scene.hue_smooth_tool
         mask = context.scene.hue_global_color_settings.get_mask()
 
-        for obj in context.selected_objects:
+        for obj in get_target_objects(context):
             if obj.type != "MESH":
                 continue
             with ensure_object_mode(obj):

@@ -29,8 +29,13 @@ import sys
 
 # Drop every cached submodule of this package and import again on reload
 if "bpy" in locals():
+    # Also clear the package's submodule attributes, or "from . import x" reuses stale ones
+    _pkg = sys.modules[__name__]
     for _name in [n for n in sys.modules if n.startswith(__name__ + ".")]:
         del sys.modules[_name]
+        _attr = _name[len(__name__) + 1:].split(".")[0]
+        if hasattr(_pkg, _attr):
+            delattr(_pkg, _attr)
 
 import bpy
 

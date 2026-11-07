@@ -9,7 +9,7 @@ from mathutils.kdtree import KDTree
 from .base_operators import BaseColorOperator
 from ..utilities.color_utilities import (
     apply_mask_array, bulk_get_colors, bulk_set_colors,
-    ensure_object_mode, get_active_color_attribute, get_selected_color_indices,
+    ensure_object_mode, get_active_color_attribute, get_selected_color_indices, get_target_objects,
 )
 
 
@@ -33,7 +33,7 @@ class HUE_OT_attribute_transfer(BaseColorOperator):
             self.report({"ERROR"}, "Source object must be a mesh.")
             return {"CANCELLED"}
 
-        for obj in context.selected_objects:
+        for obj in get_target_objects(context):
             if obj.type != "MESH" or obj is source:
                 continue
             with ensure_object_mode(obj):

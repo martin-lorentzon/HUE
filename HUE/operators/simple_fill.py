@@ -8,7 +8,7 @@ import bpy
 from ..utilities.palette_utilities import DEFAULT_PALETTE_NAME
 from ..utilities.color_utilities import (
     apply_mask_constant, bulk_get_colors, bulk_set_colors,
-    ensure_object_mode, get_active_color_attribute, get_selected_color_indices,
+    ensure_object_mode, get_active_color_attribute, get_selected_color_indices, get_target_objects,
 )
 from .base_operators import BaseColorOperator, BaseOperator
 
@@ -38,7 +38,7 @@ def execute_simple_fill(context):
     color = simple_fill_tool.selected_color
     select_mode = context.tool_settings.mesh_select_mode if context.mode == 'EDIT_MESH' else None
 
-    for obj in context.selected_objects:
+    for obj in get_target_objects(context):
         if obj.type != "MESH":
             continue
 

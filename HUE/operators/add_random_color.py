@@ -11,7 +11,7 @@ from bpy.props import EnumProperty, IntProperty
 from ..utilities.color_utilities import (
     apply_mask_constant, build_vertex_loop_map, bulk_get_colors, bulk_set_colors,
     ensure_object_mode, get_active_color_attribute, get_distinct_random_colors,
-    get_random_color, get_selected_color_indices,
+    get_random_color, get_selected_color_indices, get_target_objects,
 )
 from .base_operators import BaseColorOperator
 
@@ -197,7 +197,7 @@ class HUE_OT_add_random_color(BaseColorOperator):
                 return {"CANCELLED"}
             palette = [(*pc.color, 1.0) for pc in random_color_tool.random_palette.colors]
 
-        mesh_objects = [obj for obj in context.selected_objects if obj.type == "MESH"]
+        mesh_objects = [obj for obj in get_target_objects(context) if obj.type == "MESH"]
 
         if self.element_type == "Object":
             self._apply_per_object(mesh_objects, global_color_settings, palette)
@@ -294,7 +294,7 @@ class HUE_OT_add_random_color_by_object(BaseColorOperator):
                 (*pc.color, 1.0) for pc in random_color_tool.random_palette.colors
             ]
 
-        mesh_objects = [obj for obj in context.selected_objects if obj.type == "MESH"]
+        mesh_objects = [obj for obj in get_target_objects(context) if obj.type == "MESH"]
 
         colors = get_distinct_random_colors(
             len(mesh_objects), random_color_tool.color_mode, palette=palette

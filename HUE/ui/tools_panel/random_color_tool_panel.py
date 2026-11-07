@@ -6,6 +6,7 @@
 from bpy.types import Panel
 
 from ..base_panel_info import BasePanelInfo
+from ...utilities.color_utilities import get_target_objects
 from ...utilities.palette_utilities import (
     SWATCH_COLS, ensure_palette_assigned, get_color_icon,
 )
@@ -23,7 +24,7 @@ class HUE_PT_random_color_tool_panel(BasePanelInfo, Panel):
 
         random_color_tool = context.scene.hue_random_color_tool
 
-        mesh_count = sum(1 for obj in context.selected_objects if obj.type == "MESH")
+        mesh_count = sum(1 for obj in get_target_objects(context) if obj.type == "MESH")
         show_element_type = True
         obj = context.active_object
 
